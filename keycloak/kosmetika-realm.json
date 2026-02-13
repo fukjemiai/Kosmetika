@@ -1,0 +1,124 @@
+{
+  "realm": "kosmetika",
+  "enabled": true,
+  "displayName": "Kosmetika",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["cs", "en"],
+  "defaultLocale": "cs",
+  "roles": {
+    "realm": [
+      {
+        "name": "beautician",
+        "description": "Beautician role"
+      },
+      {
+        "name": "customer",
+        "description": "Customer role"
+      },
+      {
+        "name": "admin",
+        "description": "Admin role"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "kosmetika-api",
+      "name": "Kosmetika API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "change-me-in-production",
+      "bearerOnly": true,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "kosmetika-customer",
+      "name": "Kosmetika Customer App",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "rootUrl": "http://localhost:5173",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone"]
+    },
+    {
+      "clientId": "kosmetika-admin",
+      "name": "Kosmetika Admin App",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "rootUrl": "http://localhost:5174",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:5174/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5174"
+      ],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone"]
+    }
+  ],
+  "users": [
+    {
+      "username": "jana@beautystudio.cz",
+      "email": "jana@beautystudio.cz",
+      "firstName": "Jana",
+      "lastName": "Novakova",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["beautician", "admin"]
+    },
+    {
+      "username": "petra@beautystudio.cz",
+      "email": "petra@beautystudio.cz",
+      "firstName": "Petra",
+      "lastName": "Svobodova",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["beautician"]
+    },
+    {
+      "username": "marie@example.com",
+      "email": "marie@example.com",
+      "firstName": "Marie",
+      "lastName": "Kralova",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["customer"]
+    }
+  ]
+}

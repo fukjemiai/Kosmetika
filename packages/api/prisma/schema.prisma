@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Salon ───────────────────────────────────────────────
+
+model Salon {
+  id           String   @id @default(uuid())
+  name         String
+  address      String
+  city         String
+  zip          String
+  phone        String
+  email        String
+  description  String?
+  openingHours Json     // WeeklyHours
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  beauticians    BeauticianSalon[]
+  services       Service[]
+  bookings       Booking[]
+  invoices       Invoice[]
+  workingHours   WorkingHours[]
+
+  @@map("salons")
+}
+
+// ─── Beautician ──────────────────────────────────────────
+
+model Beautician {
+  id                 String   @id @default(uuid())
+  keycloakId         String   @unique
+  firstName          String
+  lastName           String
+  email              String   @unique
+  phone              String
+  bio                String?
+  profileImageUrl    String?
+  parentBeauticianId String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  parent   Beautician?  @relation("BeauticianTeam", fields: [parentBeauticianId], references: [id])
+  team     Beautician[] @relation("BeauticianTeam")
+
+  salons           BeauticianSalon[]
+  services         BeauticianService[]
+  bookings         Booking[]
+  invoices         Invoice[]
+  workingHours     WorkingHours[]
+
+  @@map("beauticians")
+}
+
+model BeauticianSalon {
+  beauticianId String
+  salonId      String
+  role         String  @default("employee") // 'owner' | 'employee'
+
+  beautician Beautician @relation(fields: [beauticianId], references: [id], onDelete: Cascade)
+  salon      Salon      @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@id([beauticianId, salonId])
+  @@map("beautician_salons")
+}
+
+// ─── Service ─────────────────────────────────────────────
+
+model Service {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  category        String
+  durationMinutes Int
+  price           Int      // in haléře (CZK * 100)
+  currency        String   @default("CZK")
+  active          Boolean  @default(true)
+  salonId         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  salon        Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  beauticians  BeauticianService[]
+  bookings     Booking[]
+
+  @@map("services")
+}
+
+model BeauticianService {
+  beauticianId   String
+  serviceId      String
+  customPrice    Int?
+  customDuration Int?
+
+  beautician Beautician @relation(fields: [beauticianId], references: [id], onDelete: Cascade)
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([beauticianId, serviceId])
+  @@map("beautician_services")
+}
+
+// ─── Customer ────────────────────────────────────────────
+
+model Customer {
+  id         String   @id @default(uuid())
+  keycloakId String?  @unique
+  firstName  String
+  lastName   String
+  email      String
+  phone      String
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  bookings Booking[]
+  invoices Invoice[]
+
+  @@map("customers")
+}
+
+// ─── Booking ─────────────────────────────────────────────
+
+model Booking {
+  id             String   @id @default(uuid())
+  customerId     String?
+  customerName   String
+  customerEmail  String
+  customerPhone  String
+  beauticianId   String
+  salonId        String
+  serviceId      String
+  startTime      DateTime
+  endTime        DateTime
+  status         String   @default("pending") // BookingStatus
+  notes          String?
+  price          Int
+  currency       String   @default("CZK")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  beautician Beautician @relation(fields: [beauticianId], references: [id])
+  salon      Salon      @relation(fields: [salonId], references: [id])
+  service    Service    @relation(fields: [serviceId], references: [id])
+  invoice    Invoice?
+
+  @@index([beauticianId, startTime])
+  @@index([salonId, startTime])
+  @@map("bookings")
+}
+
+// ─── Working Hours ───────────────────────────────────────
+
+model WorkingHours {
+  id           String @id @default(uuid())
+  beauticianId String
+  salonId      String
+  dayOfWeek    Int    // 0=Monday, 6=Sunday
+  startTime    String // HH:mm
+  endTime      String // HH:mm
+
+  beautician Beautician @relation(fields: [beauticianId], references: [id], onDelete: Cascade)
+  salon      Salon      @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([beauticianId, salonId, dayOfWeek])
+  @@map("working_hours")
+}
+
+// ─── Invoice / Billing ───────────────────────────────────
+
+model Invoice {
+  id              String   @id @default(uuid())
+  invoiceNumber   String   @unique
+  bookingId       String?  @unique
+  customerId      String?
+  beauticianId    String
+  salonId         String
+  // Supplier
+  supplierName    String
+  supplierIco     String?
+  supplierDic     String?
+  supplierAddress String
+  // Customer
+  customerName    String
+  customerEmail   String?
+  customerAddress String?
+  customerIco     String?
+  customerDic     String?
+  // Amounts
+  subtotal        Int
+  taxRate         Int      @default(21)
+  taxAmount       Int
+  total           Int
+  currency        String   @default("CZK")
+  // Dates
+  issuedAt        DateTime @default(now())
+  dueDate         DateTime
+  paidAt          DateTime?
+  // Status & payment
+  status          String   @default("draft") // InvoiceStatus
+  bankAccount     String?
+  variableSymbol  String?
+  paymentMethod   String   @default("cash") // PaymentMethod
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  booking    Booking?      @relation(fields: [bookingId], references: [id])
+  customer   Customer?     @relation(fields: [customerId], references: [id])
+  beautician Beautician    @relation(fields: [beauticianId], references: [id])
+  salon      Salon         @relation(fields: [salonId], references: [id])
+  items      InvoiceItem[]
+
+  @@index([beauticianId, issuedAt])
+  @@index([salonId, issuedAt])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int    @default(1)
+  unitPrice   Int
+  taxRate     Int    @default(21)
+  total       Int
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
