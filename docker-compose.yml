@@ -1,8 +1,8 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # ─── Database ──────────────────────────────────────────
-  postgres:
+  # ─── App Database (API + Prisma) ─────────────────────────────
+  postgres-app:
     image: postgres:16-alpine
     container_name: kosmetika-db
     environment:
@@ -12,24 +12,44 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_app_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kosmetika"]
+      test: ["CMD-SHELL", "pg_isready -U kosmetika -d kosmetika"]
       interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - kosmetika
+      retries: 10
+    networks: [kosmetika]
 
-  # ─── Keycloak ──────────────────────────────────────────
+  # ─── Keycloak Database (odděleně) ────────────────────────────
+  postgres-keycloak:
+    image: postgres:16-alpine
+    container_name: kosmetika-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    # port map je volitelný – pokud nechceš DB ven, smaž "ports:"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [kosmetika]
+
+  # ─── Keycloak ────────────────────────────────────────────────
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: kosmetika-keycloak
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/kosmetika
-      KC_DB_USERNAME: kosmetika
-      KC_DB_PASSWORD: kosmetika
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     command: start-dev --import-realm
@@ -38,7 +58,7 @@ services:
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     depends_on:
-      postgres:
+      postgres-keycloak:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '200'"]
@@ -46,21 +66,22 @@ services:
       timeout: 5s
       retries: 15
       start_period: 30s
-    networks:
-      - kosmetika
+    networks: [kosmetika]
 
-  # ─── API (NestJS + Prisma) ─────────────────────────────
+  # ─── API (NestJS + Prisma) ───────────────────────────────────
   api:
     build:
       context: ./packages/api
       dockerfile: Dockerfile
     container_name: kosmetika-api
     environment:
-      DATABASE_URL: postgresql://kosmetika:kosmetika@postgres:5432/kosmetika
+      DATABASE_URL: postgresql://kosmetika:kosmetika@postgres-app:5432/kosmetika
+
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_REALM: kosmetika
       KEYCLOAK_CLIENT_ID: kosmetika-api
       KEYCLOAK_CLIENT_SECRET: change-me-in-production
+
       API_PORT: "3000"
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174
     ports:
@@ -69,13 +90,12 @@ services:
       - ./packages/api/src:/app/src
       - ./packages/api/prisma:/app/prisma
     depends_on:
-      postgres:
+      postgres-app:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - kosmetika
+    networks: [kosmetika]
 
-  # ─── Customer App (React + Vite) ───────────────────────
+  # ─── Customer App ────────────────────────────────────────────
   customer-app:
     build:
       context: ./packages/customer-app
@@ -91,13 +111,11 @@ services:
     volumes:
       - ./packages/customer-app/src:/app/src
       - ./packages/customer-app/index.html:/app/index.html
-    depends_on:
-      - api
+    depends_on: [api]
     restart: unless-stopped
-    networks:
-      - kosmetika
+    networks: [kosmetika]
 
-  # ─── Admin App (React + Vite) ──────────────────────────
+  # ─── Admin App ───────────────────────────────────────────────
   admin-app:
     build:
       context: ./packages/admin-app
@@ -113,14 +131,13 @@ services:
     volumes:
       - ./packages/admin-app/src:/app/src
       - ./packages/admin-app/index.html:/app/index.html
-    depends_on:
-      - api
+    depends_on: [api]
     restart: unless-stopped
-    networks:
-      - kosmetika
+    networks: [kosmetika]
 
 volumes:
-  postgres_data:
+  postgres_app_data:
+  postgres_keycloak_data:
 
 networks:
   kosmetika:
