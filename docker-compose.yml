@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # ─── Database ──────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: kosmetika-db
@@ -17,7 +18,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - kosmetika
 
+  # ─── Keycloak ──────────────────────────────────────────
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: kosmetika-keycloak
@@ -36,6 +40,88 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '200'"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - kosmetika
+
+  # ─── API (NestJS + Prisma) ─────────────────────────────
+  api:
+    build:
+      context: ./packages/api
+      dockerfile: Dockerfile
+    container_name: kosmetika-api
+    environment:
+      DATABASE_URL: postgresql://kosmetika:kosmetika@postgres:5432/kosmetika
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: kosmetika
+      KEYCLOAK_CLIENT_ID: kosmetika-api
+      KEYCLOAK_CLIENT_SECRET: change-me-in-production
+      API_PORT: "3000"
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./packages/api/src:/app/src
+      - ./packages/api/prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kosmetika
+
+  # ─── Customer App (React + Vite) ───────────────────────
+  customer-app:
+    build:
+      context: ./packages/customer-app
+      dockerfile: Dockerfile
+    container_name: kosmetika-customer
+    environment:
+      VITE_API_URL: http://localhost:3000
+      VITE_KEYCLOAK_URL: http://localhost:8080
+      VITE_KEYCLOAK_REALM: kosmetika
+      VITE_KEYCLOAK_CLIENT_ID: kosmetika-customer
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./packages/customer-app/src:/app/src
+      - ./packages/customer-app/index.html:/app/index.html
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - kosmetika
+
+  # ─── Admin App (React + Vite) ──────────────────────────
+  admin-app:
+    build:
+      context: ./packages/admin-app
+      dockerfile: Dockerfile
+    container_name: kosmetika-admin
+    environment:
+      VITE_ADMIN_API_URL: http://localhost:3000
+      VITE_ADMIN_KEYCLOAK_URL: http://localhost:8080
+      VITE_ADMIN_KEYCLOAK_REALM: kosmetika
+      VITE_ADMIN_KEYCLOAK_CLIENT_ID: kosmetika-admin
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./packages/admin-app/src:/app/src
+      - ./packages/admin-app/index.html:/app/index.html
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - kosmetika
 
 volumes:
   postgres_data:
+
+networks:
+  kosmetika:
+    driver: bridge

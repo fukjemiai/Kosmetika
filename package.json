@@ -19,8 +19,11 @@
     "db:generate": "npm run db:generate -w packages/api",
     "db:seed": "npm run db:seed -w packages/api",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:rebuild": "docker compose up -d --build --force-recreate",
+    "docker:clean": "docker compose down -v"
   },
   "engines": {
     "node": ">=18.0.0"

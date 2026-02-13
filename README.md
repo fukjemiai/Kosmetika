@@ -36,53 +36,69 @@ keycloak/          # Keycloak realm konfigurace
 | PDF generovani | PDFKit |
 | Kontejnerizace | Docker Compose |
 
-## Spusteni (Development)
+## Spusteni (Docker - doporuceno)
+
+### Prerekvizity
+
+- Docker & Docker Compose
+
+### Jeden prikaz spusti vse
+
+```bash
+docker compose up -d --build
+```
+
+To je vse! Docker Compose spusti:
+
+| Sluzba | URL | Popis |
+|--------|-----|-------|
+| PostgreSQL | `localhost:5432` | Databaze |
+| Keycloak | `http://localhost:8080` | Autentizace (admin/admin) |
+| API | `http://localhost:3000` | NestJS backend |
+| Customer App | `http://localhost:5173` | Zakaznicky frontend |
+| Admin App | `http://localhost:5174` | Admin pro kosmeticky |
+
+API automaticky provede migraci databaze a seed testovacich dat pri startu.
+
+### Uzitecne prikazy
+
+```bash
+docker compose up -d --build    # Spustit vse (build + start)
+docker compose logs -f           # Sledovat logy vsech sluzeb
+docker compose logs -f api       # Logy jen API
+docker compose restart api       # Restartovat jednu sluzbu
+docker compose down              # Zastavit vse
+docker compose down -v           # Zastavit vse + smazat data
+```
+
+### Hot-reload
+
+Zdrojovy kod je namountovany jako volume - zmeny v `src/` se automaticky projevi bez rebuildu.
+
+### API dokumentace
+
+Swagger UI je dostupny na `http://localhost:3000/api/docs`
+
+## Spusteni bez Dockeru (alternativni)
 
 ### Prerekvizity
 
 - Node.js >= 18
-- Docker & Docker Compose
-
-### 1. Spustit infrastrukturu
-
-```bash
-docker compose up -d
-```
-
-Spusti PostgreSQL (port 5432) a Keycloak (port 8080).
-
-### 2. Nastavit environment
+- PostgreSQL 16
+- Keycloak 24
 
 ```bash
 cp .env.example .env
-```
-
-### 3. Nainstalovat zavislosti
-
-```bash
 npm install
-```
-
-### 4. Migrace databaze
-
-```bash
 npm run db:generate
 npm run db:migrate
 npm run db:seed
-```
 
-### 5. Spustit aplikace
-
-```bash
 # V oddelnych terminalech:
 npm run dev:api       # API na http://localhost:3000
 npm run dev:customer  # Zakaznicky FE na http://localhost:5173
 npm run dev:admin     # Admin FE na http://localhost:5174
 ```
-
-### API dokumentace
-
-Swagger UI je dostupny na `http://localhost:3000/api/docs`
 
 ## Demo ucty
 
