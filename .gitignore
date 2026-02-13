@@ -1,1 +1,10 @@
 .env
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+.DS_Store
+coverage/
+*.log
+.vite/
