@@ -14,7 +14,8 @@ Rezervační a fakturační systém pro kosmetické salony. Zákaznice se mohou 
 │   ├── ui/           Sdílené MUI komponenty
 │   ├── auth/         Keycloak integrace
 │   └── types/        Sdílené TypeScript typy
-├── docker/           Docker Compose (PostgreSQL + Keycloak)
+├── docker/           Keycloak realm config
+├── docker-compose.yml   Celý stack v Docker
 ```
 
 ## Tech Stack
@@ -24,6 +25,7 @@ Rezervační a fakturační systém pro kosmetické salony. Zákaznice se mohou 
 - **Frontend:** Next.js 15, React 19, Material UI 6
 - **Auth:** Keycloak (OpenID Connect), NextAuth.js
 - **Billing:** Fakturace s DPH, CSV export pro účetní
+- **Docker:** Multi-stage build, vše běží v kontejnerech
 
 ## Hlavní funkce
 
@@ -34,11 +36,26 @@ Rezervační a fakturační systém pro kosmetické salony. Zákaznice se mohou 
 - **Hierarchie:** Kosmetička může mít pod sebou další kosmetičky
 - **Dostupnost:** Automatický výpočet volných termínů na základě pracovní doby a existujících rezervací
 
-## Spuštění
+## Spuštění (Docker – vše v kontejnerech)
 
 ```bash
-# 1. Spustit infrastrukturu
-pnpm docker:up
+# Sestavit a spustit celý stack
+docker compose up -d --build
+
+# Seed databáze (volitelně, po prvním spuštění)
+docker compose exec api sh -c "cd /app/packages/database && npx prisma db seed"
+
+# Logy
+docker compose logs -f
+```
+
+API automaticky při startu provede `prisma db push` (vytvoří tabulky).
+
+## Spuštění (lokální vývoj – jen infra v Dockeru)
+
+```bash
+# 1. Spustit jen PostgreSQL + Keycloak
+docker compose up -d postgres keycloak
 
 # 2. Nainstalovat závislosti
 pnpm install
@@ -50,7 +67,7 @@ pnpm db:push
 # 4. Seed databáze (ukázková data)
 pnpm db:seed
 
-# 5. Spustit všechny aplikace
+# 5. Spustit všechny aplikace lokálně
 pnpm dev
 ```
 

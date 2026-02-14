@@ -1,0 +1,116 @@
+services:
+  # ── Infrastructure ─────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: kosmetika-db
+    environment:
+      POSTGRES_USER: kosmetika
+      POSTGRES_PASSWORD: kosmetika
+      POSTGRES_DB: kosmetika
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kosmetika"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kosmetika
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: kosmetika-keycloak
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/kosmetika
+      KC_DB_USERNAME: kosmetika
+      KC_DB_PASSWORD: kosmetika
+      KC_DB_SCHEMA: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kosmetika
+
+  # ── API ─────────────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: kosmetika-api
+    environment:
+      NODE_ENV: production
+      API_PORT: "3001"
+      DATABASE_URL: postgresql://kosmetika:kosmetika@postgres:5432/kosmetika?schema=public
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: kosmetika
+      KEYCLOAK_CLIENT_ID: kosmetika-api
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3002
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - kosmetika
+
+  # ── Customer Portal (Web) ──────────────────────────────────────────────────
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+        NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8080
+        NEXT_PUBLIC_KEYCLOAK_REALM: kosmetika
+        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: kosmetika-web
+    container_name: kosmetika-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - kosmetika
+
+  # ── Staff App ──────────────────────────────────────────────────────────────
+
+  staff:
+    build:
+      context: .
+      dockerfile: apps/staff/Dockerfile
+      args:
+        NEXT_PUBLIC_STAFF_API_URL: http://localhost:3001
+        NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8080
+        NEXT_PUBLIC_KEYCLOAK_REALM: kosmetika
+        NEXT_PUBLIC_STAFF_KEYCLOAK_CLIENT_ID: kosmetika-staff
+    container_name: kosmetika-staff
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - kosmetika
+
+volumes:
+  postgres_data:
+
+networks:
+  kosmetika:
+    driver: bridge

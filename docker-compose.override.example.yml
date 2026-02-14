@@ -1,0 +1,14 @@
+# Příklad: Pro lokální vývoj (apps běží mimo Docker, jen infra v kontejnerech)
+# Zkopírujte jako docker-compose.override.yml
+#
+# Použití:
+#   docker compose up -d postgres keycloak
+#   pnpm dev
+
+services:
+  api:
+    profiles: ["full"]
+  web:
+    profiles: ["full"]
+  staff:
+    profiles: ["full"]

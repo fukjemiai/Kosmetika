@@ -13,8 +13,11 @@
     "db:push": "turbo run db:push --filter=@kosmetika/database",
     "db:seed": "turbo run db:seed --filter=@kosmetika/database",
     "db:studio": "pnpm --filter @kosmetika/database exec prisma studio",
-    "docker:up": "docker compose -f docker/docker-compose.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:infra": "docker compose up -d postgres keycloak",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
