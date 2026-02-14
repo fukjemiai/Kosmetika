@@ -1,58 +1,73 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { keycloak, initKeycloak } from "./keycloak";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { initKeycloak, keycloak } from "./keycloak";
 
-type AuthCtx = {
-  ready: boolean;
+type AuthContextType = {
   authenticated: boolean;
-  keycloak: typeof keycloak;
+  isInitialized: boolean;
+  token: string | null;
+  userName: string | null;
   login: () => void;
   logout: () => void;
 };
 
-const AuthContext = createContext<AuthCtx | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function useAuth(): AuthCtx {
+export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let refreshTimer: number | undefined;
 
     initKeycloak()
       .then((auth) => {
-        if (cancelled) return;
         setAuthenticated(auth);
-        setReady(true);
+        setToken(keycloak.token ?? null);
+
+        if (auth && keycloak.tokenParsed) {
+          const given = (keycloak.tokenParsed as any).given_name ?? "";
+          const family = (keycloak.tokenParsed as any).family_name ?? "";
+          const full = `${given} ${family}`.trim();
+          setUserName(full || null);
+        } else {
+          setUserName(null);
+        }
+
+        setIsInitialized(true);
+
+        // token refresh (cleanable)
+        refreshTimer = window.setInterval(() => {
+          keycloak
+            .updateToken(30)
+            .then(() => setToken(keycloak.token ?? null))
+            .catch(() => keycloak.logout());
+        }, 60_000);
       })
       .catch((e) => {
-        if (cancelled) return;
         console.error("Keycloak init failed:", e);
-        setReady(true);
+        setIsInitialized(true);
       });
 
     return () => {
-      cancelled = true;
+      if (refreshTimer) window.clearInterval(refreshTimer);
     };
   }, []);
 
-  const value = useMemo<AuthCtx>(
-    () => ({
-      ready,
-      authenticated,
-      keycloak,
-      login: () => keycloak.login(),
-      logout: () => keycloak.logout(),
-    }),
-    [ready, authenticated]
+  const login = useCallback(() => keycloak.login(), []);
+  const logout = useCallback(() => keycloak.logout(), []);
+
+  const value = useMemo<AuthContextType>(
+    () => ({ authenticated, isInitialized, token, userName, login, logout }),
+    [authenticated, isInitialized, token, userName, login, logout],
   );
 
-  if (!ready) return null; // nebo loader
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};

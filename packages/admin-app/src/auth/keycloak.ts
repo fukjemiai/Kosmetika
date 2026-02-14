@@ -1,28 +1,34 @@
 import Keycloak from "keycloak-js";
 
-const config = {
-  url: import.meta.env.VITE_KEYCLOAK_URL,        // např. http://localhost:8080
-  realm: import.meta.env.VITE_KEYCLOAK_REALM,    // např. kosmetika
-  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID, // např. frontend-app
+function mustGet(name: string): string {
+  const v = (import.meta.env as any)[name] as string | undefined;
+  if (!v) throw new Error(`${name} is missing`);
+  return v;
+}
+
+const keycloakConfig = {
+  url: mustGet("VITE_ADMIN_KEYCLOAK_URL"),
+  realm: mustGet("VITE_ADMIN_KEYCLOAK_REALM"),
+  clientId: mustGet("VITE_ADMIN_KEYCLOAK_CLIENT_ID"),
 };
 
-// DEV/HMR-safe: držet instanci i init promise na window
+// HMR/StrictMode-safe: držíme instanci i init promise globálně
 declare global {
   interface Window {
-    __kc?: Keycloak;
-    __kcInit?: Promise<boolean>;
+    __adminKc?: Keycloak;
+    __adminKcInit?: Promise<boolean>;
   }
 }
 
-export const keycloak = window.__kc ?? (window.__kc = new Keycloak(config));
+export const keycloak = window.__adminKc ?? (window.__adminKc = new Keycloak(keycloakConfig));
 
 export function initKeycloak(): Promise<boolean> {
-  if (!window.__kcInit) {
-    window.__kcInit = keycloak.init({
-      onLoad: "check-sso",     // nebo "login-required"
+  if (!window.__adminKcInit) {
+    window.__adminKcInit = keycloak.init({
+      onLoad: "login-required",
       pkceMethod: "S256",
-      checkLoginIframe: false, // dev-friendly
+      checkLoginIframe: false,
     });
   }
-  return window.__kcInit;
+  return window.__adminKcInit;
 }
