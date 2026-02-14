@@ -1,73 +1,58 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import Keycloak from 'keycloak-js';
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { keycloak, initKeycloak } from "./keycloak";
 
-interface AuthContextType {
-  keycloak: Keycloak | null;
+type AuthCtx = {
+  ready: boolean;
   authenticated: boolean;
-  token: string | null;
-  userName: string | null;
+  keycloak: typeof keycloak;
   login: () => void;
   logout: () => void;
-  isInitialized: boolean;
+};
+
+const AuthContext = createContext<AuthCtx | null>(null);
+
+export function useAuth(): AuthCtx {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
+  return ctx;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  keycloak: null,
-  authenticated: false,
-  token: null,
-  userName: null,
-  login: () => {},
-  logout: () => {},
-  isInitialized: false,
-});
-
-export const useAuth = () => useContext(AuthContext);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [keycloak] = useState(
-    () =>
-      new Keycloak({
-        url: import.meta.env.VITE_ADMIN_KEYCLOAK_URL || 'http://localhost:8080',
-        realm: import.meta.env.VITE_ADMIN_KEYCLOAK_REALM || 'kosmetika',
-        clientId: import.meta.env.VITE_ADMIN_KEYCLOAK_CLIENT_ID || 'kosmetika-admin',
-      }),
-  );
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    keycloak
-      .init({ onLoad: 'login-required' })
+    let cancelled = false;
+
+    initKeycloak()
       .then((auth) => {
+        if (cancelled) return;
         setAuthenticated(auth);
-        setToken(keycloak.token || null);
-        if (auth && keycloak.tokenParsed) {
-          setUserName(
-            `${keycloak.tokenParsed.given_name || ''} ${keycloak.tokenParsed.family_name || ''}`.trim(),
-          );
-        }
-        setIsInitialized(true);
-
-        // Token refresh
-        setInterval(() => {
-          keycloak.updateToken(30).catch(() => keycloak.logout());
-        }, 60000);
+        setReady(true);
       })
-      .catch(() => {
-        setIsInitialized(true);
+      .catch((e) => {
+        if (cancelled) return;
+        console.error("Keycloak init failed:", e);
+        setReady(true);
       });
-  }, [keycloak]);
 
-  const login = useCallback(() => keycloak.login(), [keycloak]);
-  const logout = useCallback(() => keycloak.logout(), [keycloak]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{ keycloak, authenticated, token, userName, login, logout, isInitialized }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthCtx>(
+    () => ({
+      ready,
+      authenticated,
+      keycloak,
+      login: () => keycloak.login(),
+      logout: () => keycloak.logout(),
+    }),
+    [ready, authenticated]
   );
-};
+
+  if (!ready) return null; // nebo loader
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

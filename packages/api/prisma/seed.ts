@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Create salons
-  const salon1 = await prisma.salon.create({
+  const salon1 = await prisma.salon.upsert({
     data: {
       name: 'Beauty Studio Praha',
       address: 'Vinohradska 42',
@@ -24,7 +24,7 @@ async function main() {
     },
   });
 
-  const salon2 = await prisma.salon.create({
+  const salon2 = await prisma.salon.upsert({
     data: {
       name: 'Glamour Nails Brno',
       address: 'Masarykova 15',
@@ -44,7 +44,7 @@ async function main() {
   });
 
   // Create beauticians
-  const beautician1 = await prisma.beautician.create({
+  const beautician1 = await prisma.beautician.upsert({
     data: {
       keycloakId: 'demo-beautician-1',
       firstName: 'Jana',
@@ -55,7 +55,7 @@ async function main() {
     },
   });
 
-  const beautician2 = await prisma.beautician.create({
+  const beautician2 = await prisma.beautician.upsert({
     data: {
       keycloakId: 'demo-beautician-2',
       firstName: 'Petra',
