@@ -1,31 +1,28 @@
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { getOptionalAccessToken } from "../auth/keycloak";
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-  token?: string | null,
-): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
+const API_URL = import.meta.env.VITE_API_URL || "";
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers as HeadersInit | undefined);
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+
+  if (!headers.has("Content-Type") && !isFormData) {
+    headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const token = await getOptionalAccessToken(30);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error.message || 'API Error');
+    throw new Error(error.message || "API Error");
   }
 
+  if (res.status === 204) return null as unknown as T;
   return res.json();
-}
+};
 
 // Salon endpoints
 export const salonsApi = {

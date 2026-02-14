@@ -26,3 +26,19 @@ export function initKeycloak(): Promise<boolean> {
   }
   return window.__kcInit;
 }
+export async function getOptionalAccessToken(minValiditySeconds = 30): Promise<string | null> {
+  try {
+    await initKeycloak();
+    if (!keycloak.authenticated) return null;
+
+    try {
+      await keycloak.updateToken(minValiditySeconds);
+    } catch {
+      // ignore
+    }
+
+    return keycloak.token ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -24,7 +24,6 @@ import {
   Settings,
 } from '@mui/icons-material';
 import { useAuth } from './auth/AuthProvider';
-import { setAuthToken } from './api/client';
 import DashboardPage from './pages/DashboardPage';
 import BookingsPage from './pages/BookingsPage';
 import ServicesPage from './pages/ServicesPage';
@@ -49,10 +48,6 @@ const App: React.FC = () => {
   const { authenticated, isInitialized, userName, token, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    if (token) setAuthToken(token);
-  }, [token]);
 
   if (!isInitialized) {
     return (
