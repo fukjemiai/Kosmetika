@@ -12,9 +12,9 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Grid,
   Divider,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import { StaffLayout } from "@/components/StaffLayout";
 
 const DAYS = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"];

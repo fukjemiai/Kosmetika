@@ -12,7 +12,6 @@ import {
   Button,
   Card,
   CardContent,
-  Grid,
   TextField,
   Chip,
   Alert,
@@ -20,6 +19,7 @@ import {
   Toolbar,
   IconButton,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { LoadingScreen } from "@kosmetika/ui";
 

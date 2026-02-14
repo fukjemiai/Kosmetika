@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Typography,
-  Grid,
   Button,
   Dialog,
   DialogTitle,
@@ -12,6 +11,7 @@ import {
   TextField,
   Box,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import AddIcon from "@mui/icons-material/Add";
 import { StaffLayout } from "@/components/StaffLayout";
 import { ServiceCard } from "@kosmetika/ui";

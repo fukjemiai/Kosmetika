@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import {
   Typography,
-  Grid,
   Card,
   CardContent,
   Box,
   Chip,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import PeopleIcon from "@mui/icons-material/People";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";

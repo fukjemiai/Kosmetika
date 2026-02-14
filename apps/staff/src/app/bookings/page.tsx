@@ -9,7 +9,6 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Grid,
   Card,
   CardContent,
   Chip,
@@ -19,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusChip } from "@kosmetika/ui";
 

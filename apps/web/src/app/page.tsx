@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Container,
   Typography,
-  Grid,
   Box,
   TextField,
   InputAdornment,
@@ -12,6 +11,7 @@ import {
   Toolbar,
   Button,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import SearchIcon from "@mui/icons-material/Search";
 import { SalonCard } from "@kosmetika/ui";
 import type { SalonDto } from "@kosmetika/types";

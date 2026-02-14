@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Container,
   Typography,
-  Grid,
   Box,
   Chip,
   Button,
@@ -15,6 +14,7 @@ import {
   Avatar,
   Divider,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";

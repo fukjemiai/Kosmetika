@@ -15,8 +15,8 @@ import {
   Paper,
   Card,
   CardContent,
-  Grid,
 } from "@mui/material";
+import Grid from "@mui/material/Grid2";
 import DownloadIcon from "@mui/icons-material/Download";
 import { StaffLayout } from "@/components/StaffLayout";
 import { StatusChip } from "@kosmetika/ui";
