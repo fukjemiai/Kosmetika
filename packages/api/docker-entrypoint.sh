@@ -27,7 +27,7 @@ done
 echo "==> Database schema pushed successfully."
 
 echo "==> Running seed..."
-npx ts-node prisma/seed.ts 2>&1 || echo "Seed skipped (already seeded or error)"
+npx ts-node --project prisma/tsconfig.seed.json prisma/seed.ts 2>&1 || echo "Seed skipped (already seeded or error)"
 
 echo "==> Starting API server..."
 exec npx nest start --watch
