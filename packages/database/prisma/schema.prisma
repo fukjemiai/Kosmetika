@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Salony ──────────────────────────────────────────────────────────────────
+
+model Salon {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  address     String
+  city        String
+  zip         String
+  phone       String?
+  email       String?
+  website     String?
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  beauticians  BeauticianSalon[]
+  services     SalonService[]
+  bookings     Booking[]
+  workingHours WorkingHours[]
+
+  @@map("salons")
+}
+
+// ─── Kosmetičky ──────────────────────────────────────────────────────────────
+
+model Beautician {
+  id           String  @id @default(cuid())
+  keycloakId   String? @unique
+  firstName    String
+  lastName     String
+  email        String  @unique
+  phone        String?
+  bio          String?
+  imageUrl     String?
+  active       Boolean @default(true)
+  specializations String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Kosmetička může pracovat ve více salonech
+  salons       BeauticianSalon[]
+  bookings     Booking[]
+  workingHours WorkingHours[]
+
+  // Hierarchie: kosmetička může mít pod sebou další kosmetičky
+  managerId    String?
+  manager      Beautician?  @relation("BeauticianHierarchy", fields: [managerId], references: [id])
+  subordinates Beautician[] @relation("BeauticianHierarchy")
+
+  @@map("beauticians")
+}
+
+model BeauticianSalon {
+  id            String     @id @default(cuid())
+  beauticianId  String
+  salonId       String
+  role          SalonRole  @default(BEAUTICIAN)
+  beautician    Beautician @relation(fields: [beauticianId], references: [id], onDelete: Cascade)
+  salon         Salon      @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([beauticianId, salonId])
+  @@map("beautician_salons")
+}
+
+enum SalonRole {
+  OWNER
+  BEAUTICIAN
+}
+
+// ─── Služby ──────────────────────────────────────────────────────────────────
+
+model Service {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  // výchozí cena a trvání (salon může přepsat)
+  defaultPrice    Int // v haléřích (CZK * 100)
+  defaultDuration Int // v minutách
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salonServices SalonService[]
+
+  @@map("services")
+}
+
+model SalonService {
+  id        String @id @default(cuid())
+  salonId   String
+  serviceId String
+  // přepsání výchozích hodnot pro daný salon
+  price     Int?   // pokud null, použije se defaultPrice
+  duration  Int?   // pokud null, použije se defaultDuration
+  active    Boolean @default(true)
+
+  salon   Salon   @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([salonId, serviceId])
+  @@map("salon_services")
+}
+
+// ─── Zákazníci ───────────────────────────────────────────────────────────────
+
+model Customer {
+  id         String  @id @default(cuid())
+  keycloakId String? @unique // null = anonymní zákazník
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  note       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@map("customers")
+}
+
+// ─── Rezervace ───────────────────────────────────────────────────────────────
+
+model Booking {
+  id             String        @id @default(cuid())
+  salonId        String
+  beauticianId   String
+  salonServiceId String
+  customerId     String?       // null = anonymní objednávka
+  status         BookingStatus @default(PENDING)
+
+  // Údaje anonymního zákazníka (pokud nemá účet)
+  guestName  String?
+  guestEmail String?
+  guestPhone String?
+
+  startTime DateTime
+  endTime   DateTime
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salon        Salon        @relation(fields: [salonId], references: [id])
+  beautician   Beautician   @relation(fields: [beauticianId], references: [id])
+  salonService SalonService @relation(fields: [salonServiceId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+
+  invoice Invoice?
+
+  @@index([salonId, startTime])
+  @@index([beauticianId, startTime])
+  @@map("bookings")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ─── Pracovní doba ───────────────────────────────────────────────────────────
+
+model WorkingHours {
+  id           String @id @default(cuid())
+  beauticianId String
+  salonId      String
+  dayOfWeek    Int    // 0 = pondělí, 6 = neděle
+  startTime    String // "09:00"
+  endTime      String // "17:00"
+
+  beautician Beautician @relation(fields: [beauticianId], references: [id], onDelete: Cascade)
+  salon      Salon      @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([beauticianId, salonId, dayOfWeek])
+  @@map("working_hours")
+}
+
+// ─── Fakturace / Billing ─────────────────────────────────────────────────────
+
+model Invoice {
+  id          String        @id @default(cuid())
+  bookingId   String        @unique
+  number      String        @unique // e.g. "2026-0001"
+  status      InvoiceStatus @default(DRAFT)
+
+  // Fakturační údaje
+  customerName    String
+  customerEmail   String?
+  customerAddress String?
+  customerIco     String?  // IČO
+  customerDic     String?  // DIČ
+
+  subtotal  Int // v haléřích
+  taxRate   Int @default(21) // DPH v %
+  taxAmount Int // v haléřích
+  total     Int // v haléřích
+
+  issuedAt   DateTime  @default(now())
+  dueDate    DateTime
+  paidAt     DateTime?
+  cancelledAt DateTime?
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  items   InvoiceItem[]
+
+  @@index([number])
+  @@index([issuedAt])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int    @default(1)
+  unitPrice   Int    // v haléřích
+  taxRate     Int    @default(21)
+  total       Int    // v haléřích
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+  OVERDUE
+}
