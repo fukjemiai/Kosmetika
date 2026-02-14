@@ -27,7 +27,7 @@ export class AuthGuard extends PassportAuthGuard("jwt") implements CanActivate {
     return super.canActivate(context);
   }
 
-  handleRequest(err: Error | null, user: unknown) {
+  handleRequest<TUser = any>(err: Error | null, user: TUser, info: any, context: ExecutionContext): TUser {
     if (err || !user) {
       throw err || new UnauthorizedException();
     }

@@ -1,6 +1,6 @@
 import { Controller, Get, Put, Param, Query, Body, UseGuards } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
-import { AvailabilityService } from "./availability.service";
+import { AvailabilityService, TimeSlot } from "./availability.service";
 import { Public } from "../auth/public.decorator";
 import { AuthGuard } from "../auth/auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
@@ -20,7 +20,7 @@ export class AvailabilityController {
     @Param("salonId") salonId: string,
     @Query("date") date: string,
     @Query("duration") duration?: string,
-  ) {
+  ): Promise<TimeSlot[]> {
     return this.availabilityService.getAvailableSlots(
       beauticianId,
       salonId,

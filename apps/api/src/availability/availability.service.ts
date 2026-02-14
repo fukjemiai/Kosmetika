@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
-interface TimeSlot {
+export interface TimeSlot {
   startTime: string;
   endTime: string;
   available: boolean;
